@@ -33,6 +33,39 @@ public class Neo4jGraphTestClient extends TestClientBase {
         });
     }
 
+    public void testRunQuery() {
+        JsonObject someJson = new JsonObject();
+        someJson.putString("query", "MERGE (nodus {name: 'Maximus', size: 'Large', nested: ['Band', 'Zonder', 'Amazing', 'Stroopwafels']})" );
+        vertx.eventBus().send(
+            "test.neo4j-graph.cypher.query",
+            someJson,
+            new Handler<Message<JsonObject>>() {
+
+                @Override
+                public void handle(Message<JsonObject> message) {
+
+                    JsonObject someJson = new JsonObject();
+                    someJson.putString("query", "MATCH (n) RETURN n");
+
+                    vertx.eventBus().send(
+                            "test.neo4j-graph.cypher.query",
+                            someJson,
+                            new Handler<Message<JsonObject>>() {
+
+                                @Override
+                                public void handle(Message<JsonObject> message) {
+                                    //TODO do azzert
+                                    System.out.println("DEBUG: (message.body()): " + message.body());
+
+                                    tu.testComplete();
+                                }
+                            }
+                    );
+                }
+            }
+        );
+    }
+
     public void testCreateNode() {
         vertx.eventBus().send(
             "test.neo4j-graph.nodes.store",

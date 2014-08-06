@@ -1,9 +1,7 @@
 package org.openpcf.neo4vertx.neo4j;
 
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
+import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.server.Bootstrapper;
 import org.neo4j.server.WrappingNeoServerBootstrapper;
@@ -14,6 +12,13 @@ import org.openpcf.neo4vertx.Handler;
 import org.openpcf.neo4vertx.Nodes;
 import org.openpcf.neo4vertx.Relationships;
 import org.vertx.java.busmods.graph.neo4j.Configuration;
+
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 
 /**
  * The Neo4jGraph object.
@@ -34,6 +39,7 @@ public class Neo4jGraph implements Graph {
     private Nodes nodes;
     private Relationships relationships;
     private Complex complex;
+    private ExecutionEngine executionEngine;
 
     /**
      * Create an embedded Neo4j graph instance
@@ -96,6 +102,7 @@ public class Neo4jGraph implements Graph {
         nodes = new Neo4jNodes(graphDatabaseService, finder);
         relationships = new Neo4jRelationships(graphDatabaseService, finder);
         complex = new Neo4jComplex(graphDatabaseService, finder);
+        executionEngine = new ExecutionEngine(graphDatabaseService);
     }
 
     @Override
@@ -111,6 +118,46 @@ public class Neo4jGraph implements Graph {
     @Override
     public Complex complex() {
         return complex;
+    }
+
+    @Override
+    public void query(String query, Handler<String> handler) throws Exception {
+
+        String url = "http://localhost:7474/db/data/cypher";
+
+        URL obj = new URL(url);
+        HttpURLConnection connection = (HttpURLConnection) obj.openConnection();
+
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("User-Agent", "Mozilla/1.0");
+        connection.setRequestProperty("Accept", "application/json");
+        connection.setRequestProperty("Content-Type", "application/json");
+
+        String urlParameters = "{ \"query\" : \"" + query + "\" }";
+
+        connection.setDoOutput(true);
+        DataOutputStream wr = new DataOutputStream(connection.getOutputStream());
+        wr.writeBytes(urlParameters);
+        wr.flush();
+        wr.close();
+
+        int responseCode = connection.getResponseCode();
+
+        System.out.println("\nSending 'POST' request to URL : " + url);
+        System.out.println("Post parameters : " + urlParameters);
+        System.out.println("Response Code : " + responseCode);
+
+        BufferedReader in = new BufferedReader(
+                new InputStreamReader(connection.getInputStream()));
+        String inputLine;
+        StringBuffer response = new StringBuffer();
+
+        while ( (inputLine = in.readLine()) != null ) {
+            response.append(inputLine);
+        }
+        in.close();
+
+       handler.handle(response.toString());
     }
 
     @Override

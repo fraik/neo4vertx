@@ -13,6 +13,8 @@ public interface Graph {
 
     public Complex complex();
 
+    public void query(String query, Handler<String> handler) throws Exception;
+
     public void clear(Handler<Boolean> handler) throws Exception;
 
     public void shutdown();
